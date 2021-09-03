@@ -1,0 +1,52 @@
+version: '3'
+
+services:
+
+  # PostgreSQL Database
+  postgres-database:
+    image: postgres:13
+    container_name: postgresdb
+    command: postgres -c 'max_connections=200'
+    environment:
+      - POSTGRES_PASSWORD=password
+    restart: unless-stopped
+    ports:
+      - "5432:5432"
+    volumes:
+      - sa-database-data:/var/lib/postgresql/data
+
+  # Gateway and Load Balancer
+  traefik:
+    image: "traefik:v2.4"
+    container_name: "traefik"
+    hostname: "traefik"
+    ports:
+      - "80:80"
+      - "8080:8080"
+    volumes:
+      - "/var/run/docker.sock:/var/run/docker.sock:ro"
+      - "./traefik/traefik.yml:/traefik.yml:ro"
+      - "./traefik/traefik-local.yml:/traefik-local.yml:ro"
+
+  # Submission Microservice
+  submission-microservice:
+    image: submission-microservice:latest
+    container_name: submission-microservice
+    build:
+      context: ../../da.submission-microservice/
+      dockerfile: Dockerfile
+    restart: unless-stopped
+    labels:
+      - "traefik.enable=true"
+      # - "traefik.http.routers.authorization.entrypoints=web"
+      # - "traefik.http.routers.authorization.rule=Host(`auth.$MY_DOMAIN`)"
+      - "traefik.http.services.authorization.loadbalancer.server.port=8090"
+    ports:
+      - "8090:8090"
+    depends_on:
+      - postgres-database
+    environment:
+      SPRING_PROFILES_ACTIVE: "${ENVIRONMENT}"
+
+volumes:
+  da-database-data:

@@ -1,0 +1,32 @@
+version: '3'
+
+services:
+
+  # PostgreSQL Database
+  postgres-database:
+    image: postgres:13
+    container_name: postgresdb
+    command: postgres -c 'max_connections=200'
+    environment:
+      - POSTGRES_DB=userdata
+      - POSTGRES_PASSWORD=password
+    restart: unless-stopped
+    ports:
+      - "5432:5432"
+    volumes:
+      - sa-database-data:/var/lib/postgresql/data
+
+  # Simple Microservice
+  simple-microservice:
+    image: nftdockerhub/sa-microservice:latest
+    container_name: simple-microservice
+    restart: unless-stopped
+    ports:
+      - "8093:8093"
+    depends_on:
+      - postgres-database
+    environment:
+      SPRING_PROFILES_ACTIVE: "${ENVIRONMENT}"
+
+volumes:
+  sa-database-data:

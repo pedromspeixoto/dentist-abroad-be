@@ -1,0 +1,23 @@
+spring:
+  datasource:
+    driver-class-name: org.postgresql.Driver
+    url: jdbc:postgresql://postgres-database:5432/submissiondata
+    username: postgres
+    password: password
+    jpa:
+      hibernate:
+        ddl-auto: none
+      show-sql: true
+  flyway:
+    enabled: true
+    baseline-on-migrate: false
+    out-of-order: false
+
+sa:
+  swagger:
+    enabled: true
+
+logging:
+  level:
+    com.sa: INFO
+    org.springframework.web: INFO

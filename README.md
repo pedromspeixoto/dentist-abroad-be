@@ -25,8 +25,8 @@ Run the build-and-deploy.sh file located under the folder /deployment/local/
 
 ## Authors
 
-Daniel Belém Duarte
-Pedro Miguel Peixoto  
+* Daniel Belém Duarte (danielbelemduarte@gmail.com)
+* Pedro Miguel Peixoto (pedropeixoto6@gmail.com)
 
 ## Version History
 

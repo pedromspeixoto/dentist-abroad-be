@@ -1,12 +1,9 @@
 spring:
   application:
-    name: submission-microservice
+    name: notification-consumer
   profiles:
     active: ${SPRING_PROFILES_ACTIVE:local}
-server:
-  servlet:
-    context-path: /submissions
-  port: 8090
+  port: 8098
 ---
 spring:
   profiles: local

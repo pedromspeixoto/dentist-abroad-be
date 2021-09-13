@@ -1,4 +1,4 @@
-CREATE TABLE IF NOT EXISTS submission_data (
+CREATE TABLE IF NOT EXISTS submissions (
     submission_id VARCHAR(255) PRIMARY KEY,
     name VARCHAR(255) NOT NULL,
     nationality VARCHAR(255) NOT NULL,
@@ -12,4 +12,4 @@ CREATE TABLE IF NOT EXISTS submission_data (
 );
 
 -- create indexes
-CREATE INDEX ON submission_data (submission_id DESC);
+CREATE INDEX ON submissions (submission_id DESC);

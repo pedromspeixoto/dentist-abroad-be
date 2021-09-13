@@ -1,0 +1,22 @@
+spring:
+  rabbitmq: 
+    host: rabbitmq
+    username: rabbitmq
+    password: rabbitmq
+    port: 5672
+    virtual-host: /
+
+logging:
+  level:
+    com.da: INFO
+    org.springframework.web: INFO
+
+rabbitmq:
+  dead-letter:
+    name: "dlq"
+  email:
+    queue: email
+    routing-keys: email.submission.notification
+    durable: true
+    dead-letter:
+      routing-key: email.dlq

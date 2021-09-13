@@ -12,12 +12,21 @@ spring:
     enabled: true
     baseline-on-migrate: false
     out-of-order: false
- 
-sa:
-  swagger:
-    enabled: true
+  rabbitmq: 
+    host: rabbitmq
+    username: rabbitmq
+    password: rabbitmq
+    port: 5672
+    virtual-host: /
 
 logging:
   level:
-    com.sa: INFO
+    com.da: INFO
     org.springframework.web: INFO
+
+rabbitmq:
+  exchange:
+    name: ${SPRING_PROFILES_ACTIVE:local}
+  routing-key:
+    email-submission-notification: email.submission.notification
+    email-submission-ack: emails.submission.ack

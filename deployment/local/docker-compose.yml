@@ -9,24 +9,92 @@ services:
     command: postgres -c 'max_connections=200'
     environment:
       - POSTGRES_PASSWORD=password
+      - POSTGRES_DB=submissiondata
     restart: unless-stopped
     ports:
       - "5432:5432"
     volumes:
-      - sa-database-data:/var/lib/postgresql/data
+      - da-database-data:/var/lib/postgresql/data
 
   # Gateway and Load Balancer
   traefik:
     image: "traefik:v2.4"
     container_name: "traefik"
     hostname: "traefik"
+    restart: unless-stopped
     ports:
       - "80:80"
+      - "443:443"
       - "8080:8080"
     volumes:
       - "/var/run/docker.sock:/var/run/docker.sock:ro"
       - "./traefik/traefik.yml:/traefik.yml:ro"
-      - "./traefik/traefik-local.yml:/traefik-local.yml:ro"
+
+  # Keycloak (Identity Management)
+  keycloak:
+    image: jboss/keycloak:7.0.1
+    hostname: keycloak
+    container_name: "keycloak"
+    environment:
+      - DB_VENDOR=POSTGRES
+      - DB_ADDR=postgres-database
+      - DB_DATABASE=keycloak
+      - DB_PORT=5432
+      - DB_USER=postgres
+      - DB_SCHEMA=public
+      - DB_PASSWORD=password
+      - PROXY_ADDRESS_FORWARDING=true
+      - KEYCLOAK_LOGLEVEL=INFO
+      - KEYCLOAK_USER=admin
+      - KEYCLOAK_PASSWORD=password
+    restart: unless-stopped
+    ports:
+      - "9090:8080"
+    depends_on: 
+      - postgres-database
+    command: ["-b", "0.0.0.0", "-Dkeycloak.profile.feature.docker=enabled"]
+
+  # Traefik Fwd Auth Service
+  traefik-auth:
+    container_name: traefik-auth
+    image: funkypenguin/traefik-forward-auth
+    environment:
+      - CLIENT_ID=traefik-auth
+      - CLIENT_SECRET=8f52ae0f-3c70-4622-82b8-9f66385f01a4
+      - OIDC_ISSUER=http://keycloak:8080/auth/realms/master
+      - SECRET=secret
+      - AUTH_HOST=auth.localhost
+      - COOKIE_DOMAIN=localhost
+      - LOG_LEVEL=debug
+    depends_on: 
+      - keycloak
+      - traefik
+    restart: unless-stopped
+    ports:
+    - "4181:4181"
+    labels:
+      - traefik.enable=true
+      - traefik.http.routers.auth.entrypoints=web
+      - traefik.http.routers.auth.rule=Host(`auth.localhost`)
+      - traefik.http.services.auth.loadbalancer.server.port=4181
+      - traefik.http.middlewares.keycloak.forwardAuth.address=http://traefik-auth:4181
+      - traefik.http.middlewares.keycloak.forwardauth.trustForwardHeader=true
+      - traefik.http.middlewares.keycloak.forwardauth.authResponseHeaders=X-Forwarded-User
+
+  # RabbitMQ - Queue
+  rabbitmq:
+    container_name: rabbitmq
+    image: "rabbitmq:3-management"
+    hostname: "rabbitmq"
+    environment:
+      RABBITMQ_ERLANG_COOKIE: SWQOKODSQALRPCLNMEQG
+      RABBITMQ_DEFAULT_USER: rabbitmq
+      RABBITMQ_DEFAULT_PASS: rabbitmq
+      RABBITMQ_DEFAULT_VHOST: /
+    restart: unless-stopped
+    ports:
+      - "15672:15672"
+      - "5672:5672"
 
   # Submission Microservice
   submission-microservice:
@@ -37,14 +105,28 @@ services:
       dockerfile: Dockerfile
     restart: unless-stopped
     labels:
-      - "traefik.enable=true"
-      # - "traefik.http.routers.authorization.entrypoints=web"
-      # - "traefik.http.routers.authorization.rule=Host(`auth.$MY_DOMAIN`)"
-      - "traefik.http.services.authorization.loadbalancer.server.port=8090"
-    ports:
-      - "8090:8090"
+      - traefik.enable=true
+      - traefik.http.routers.submissions.rule=PathPrefix(`/submissions`)
+      - traefik.http.services.submissions.loadbalancer.server.port=8090
+      - traefik.http.middlewares.submission.forwardAuth.address=http://traefik-auth:4181
+      - traefik.http.middlewares.submission.forwardauth.trustForwardHeader=true
+      - traefik.http.middlewares.submission.forwardauth.authResponseHeaders=X-Forwarded-User
     depends_on:
       - postgres-database
+      - traefik
+    environment:
+      SPRING_PROFILES_ACTIVE: "${ENVIRONMENT}"
+
+  # Notification Consumer
+  notification-consumer:
+    image: notification-consumer:latest
+    container_name: notification-consumer
+    build:
+      context: ../../da.notification-consumer/
+      dockerfile: Dockerfile
+    restart: unless-stopped
+    depends_on:
+      - rabbitmq
     environment:
       SPRING_PROFILES_ACTIVE: "${ENVIRONMENT}"
 

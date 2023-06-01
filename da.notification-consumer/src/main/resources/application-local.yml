@@ -46,4 +46,4 @@ email:
     start-tls-enable: "true"
   account:
     username: "movedentist@outlook.com"
-    password: "DentistMove2021!"
+    password: ${email_smtp_password}
